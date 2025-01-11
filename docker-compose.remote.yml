@@ -1,0 +1,13 @@
+---
+services:
+  app:
+    image: rajeshprasanth/file-hosting:latest  # Use the pulled image instead of building
+    container_name: file-hosting
+    ports:
+      - "5001:5000"
+    volumes:
+      - ./uploads:/app/uploads
+    environment:
+      - UPLOAD_FOLDER=/app/uploads
+      - SECRET_KEY=supersecretkey  # Set the secret key here
+    restart: unless-stopped
