@@ -1,79 +1,69 @@
-from flask import Flask, request, redirect, url_for, send_from_directory, render_template, jsonify
 import os
-import datetime
-
-# Configuration
-UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'zip'}
-MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16 MB
-FILES_PER_PAGE = 5  # Files per page for pagination
+from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory
+from werkzeug.utils import secure_filename
+from datetime import datetime
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
-# Ensure the upload folder exists
+# Configuration
+UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', '/app/uploads')  # Default to /app/uploads inside Docker
+ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'mp3', 'mp4'}
+SECRET_KEY = os.getenv('SECRET_KEY')  # Get the secret key from environment variables
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['SECRET_KEY'] = SECRET_KEY
+
+# Ensure the upload directory exists
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Function to check if the file type is allowed
+# Helper function to check allowed file extensions
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# Function to get file information
-def get_file_info(filename):
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    if os.path.exists(file_path):
-        file_size = os.path.getsize(file_path)
-        uploaded_time = datetime.datetime.fromtimestamp(os.path.getctime(file_path))
-        modified_time = datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
-        return {
-            'filename': filename,
-            'size': file_size,
-            'uploaded': uploaded_time.strftime('%Y-%m-%d %H:%M:%S'),
-            'modified': modified_time.strftime('%Y-%m-%d %H:%M:%S')
-        }
-    return None
+# Helper function to get file details
+def get_all_files():
+    return [{
+        'filename': f,
+        'size': os.path.getsize(os.path.join(UPLOAD_FOLDER, f)),
+        'uploaded': datetime.fromtimestamp(os.path.getctime(os.path.join(UPLOAD_FOLDER, f))).strftime('%Y-%m-%d %H:%M:%S'),
+        'modified': datetime.fromtimestamp(os.path.getmtime(os.path.join(UPLOAD_FOLDER, f))).strftime('%Y-%m-%d %H:%M:%S'),
+    } for f in os.listdir(UPLOAD_FOLDER) if allowed_file(f)]
 
+# Routes
 @app.route('/')
-def index():
+@app.route('/page/<int:page>')
+def index(page=1):
+    files_per_page = 10
+    all_files = get_all_files()
+    total_files = len(all_files)
+
     # Pagination logic
-    page = request.args.get('page', 1, type=int)
-    files = os.listdir(app.config['UPLOAD_FOLDER'])
-    files_info = [get_file_info(file) for file in files]
-    
-    # Sort files by upload date (most recent first)
-    files_info.sort(key=lambda x: x['uploaded'], reverse=True)
-    
-    # Pagination
-    start = (page - 1) * FILES_PER_PAGE
-    end = start + FILES_PER_PAGE
-    paginated_files = files_info[start:end]
-    
-    total_files = len(files_info)
-    total_pages = (total_files // FILES_PER_PAGE) + (1 if total_files % FILES_PER_PAGE else 0)
-    
-    return render_template('index.html', files=paginated_files, page=page, total_pages=total_pages)
+    start = (page - 1) * files_per_page
+    end = start + files_per_page
+    files = all_files[start:end]
+    total_pages = (total_files + files_per_page - 1) // files_per_page
+
+    return render_template('index.html', files=files, page=page, total_pages=total_pages)
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
-        return "No file part", 400
+        flash('No file part', 'danger')
+        return redirect(url_for('index'))
+
     file = request.files['file']
     if file.filename == '':
-        return "No selected file", 400
+        flash('No selected file', 'danger')
+        return redirect(url_for('index'))
+
     if file and allowed_file(file.filename):
-        filename = file.filename
+        filename = secure_filename(file.filename)
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        flash('File successfully uploaded', 'success')
         return redirect(url_for('index'))
     else:
-        return "File type not allowed", 400
-
-@app.route('/files', methods=['GET'])
-def get_files():
-    # Return the list of files in the upload folder
-    files = os.listdir(app.config['UPLOAD_FOLDER'])
-    files_info = [get_file_info(file) for file in files]
-    return jsonify({'files': files_info})
+        flash('File type not allowed', 'danger')
+        return redirect(url_for('index'))
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
@@ -81,12 +71,13 @@ def uploaded_file(filename):
 
 @app.route('/delete/<filename>', methods=['POST'])
 def delete_file(filename):
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    if os.path.exists(file_path):
+    try:
+        file_path = os.path.join(UPLOAD_FOLDER, filename)
         os.remove(file_path)
-        return jsonify({'message': f"File {filename} deleted successfully"}), 200
-    else:
-        return jsonify({'message': f"File {filename} not found"}), 404
+        flash(f'File {filename} deleted successfully', 'success')
+    except FileNotFoundError:
+        flash(f'File {filename} not found', 'danger')
+    return redirect(url_for('index'))
 
 if __name__ == '__main__':
-   app.run(debug=True,port=5001)
+    app.run(host='0.0.0.0', port=5000, debug=False)
