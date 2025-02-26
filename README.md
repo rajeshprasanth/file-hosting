@@ -4,60 +4,108 @@ The **File Hosting** project is a Flask-based web application designed to facili
 
 ## Features
 
-- **File Upload:** Easily upload files through a simple web interface.
-- **File Management:** View a list of uploaded files with details such as filename, size, and upload date.
-- **File Deletion:** Remove unwanted files directly from the application.
-- **Secure Storage:** Uploaded files are stored securely on the server.
+1. **User-Friendly Interface:** Built with Flask for a simple and intuitive design.
+2. **File Upload & Management:** Supports uploading, listing, and deleting files.
+3. **Secure Storage:** Ensures secure handling and storage of uploaded files.
+4. **Flexible Deployment Options:** Supports local execution, virtual environments, and Docker-based deployments.
+5. **Remote & Local Execution:** Run directly, inside a virtual environment, or as a Docker container.
 
-## Installation
+## Installation & Usage
 
 ### 1. Clone the Repository
+
+To begin using this application, clone the repository using the following command:
 
 ```bash
 git clone https://github.com/rajeshprasanth/file-hosting.git
 cd file-hosting
 ```
 
-### 2. Docker Setup
+### 2. Installation and Execution Methods
 
-To run the application using Docker, follow these steps:
+Depending on your setup, you may choose one of the following installation methods:
 
-#### 1. Local Build
+#### Option 1: Direct Host Installation (Without Docker)
 
-To build the Docker image locally, follow these steps:
+1. Install the required dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+2. Run the application:
+   ```bash
+   python app.py
+   ```
+3. Access the file hosting service at: `http://localhost:5000`
 
-#### Build the Docker Image
+#### Option 2: Virtual Environment Installation
 
-```bash
-docker build -t file-hosting .
-```
-#### Run the Docker Container
-```bash
-docker run -d -p 5000:5000 --name file-hosting file-hosting
-```
-This command runs the container in detached mode, maps port 5000 of the container to port 5000 on your host, and names the container file-hosting.
+1. Create and activate a virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: `venv\Scripts\activate`
+   ```
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Run the application:
+   ```bash
+   python app.py
+   ```
+4. Access the file hosting service at: `http://localhost:5000`
 
-#### 2. Remote Pull
+#### Option 3: Local Docker Build
 
-Alternatively, you can pull the pre-built image from Docker Hub and run the container:
-#### Pull the Docker Image
-```bash
-docker pull rajeshprasanth/file-hosting:latest
-```
-#### Run the Docker Container
-```bash
-docker run -d -p 5000:5000 --name file-hosting rajeshprasanth/file-hosting:latest
-```
-This command pulls the image from Docker Hub and runs the container in detached mode, mapping port 5000 of the container to port 5000 on your host.
-## Usage
+1. Build and deploy the application using Docker:
+   ```bash
+   docker compose -f docker-compose.local.yml up -d
+   ```
+   - This command builds the image and starts the container in detached mode (`-d`).
+   - Ensure the upload folder is correctly mounted.
+2. Monitor logs:
+   ```bash
+   docker logs -f <container_id>
+   ```
+3. Access the file hosting service at: `http://localhost:5000`
+
+#### Option 4: Deploy Using a Pre-Built Docker Image (Remote Image from Docker Hub)
+
+1. Pull and deploy the latest pre-built image from Docker Hub:
+   ```bash
+   docker compose -f docker-compose.remote.yml up -d
+   ```
+2. To update the image:
+   ```bash
+   docker compose -f docker-compose.remote.yml pull
+   ```
+   ```bash
+   docker compose -f docker-compose.remote.yml up -d --force-recreate
+   ```
+3. Access the file hosting service at: `http://localhost:5000`
+
+### 3. Managing the Service
+
+1. **Stopping the Service**
+   ```bash
+   docker compose down
+   ```
+2. **Restarting the Service**
+   ```bash
+   docker compose up -d --build
+   ```
+3. **Viewing Running Containers**
+   ```bash
+   docker ps
+   ```
+
+## Configuration
 
 ### 1. Volumes:
 ```yaml
 volumes:
   - ./uploads:/app/uploads
 ```
-- This makes a folder on your computer (./uploads) available inside the container at /app/uploads.
-- It allows files uploaded in the app to be saved on your computer, so they’re not lost when the container restarts.
+- This ensures that uploaded files persist even after the container restarts.
 
 ### 2. Environment Variables:
 ```yaml
@@ -65,26 +113,24 @@ environment:
   - UPLOAD_FOLDER=/app/uploads
   - SECRET_KEY=supersecretkey
 ```
- - `UPLOAD_FOLDER`: Tells the app where to save uploaded files inside the container.
- - `SECRET_KEY`: A secret value used by Flask to handle things like sessions and cookies securely. You should change this to a more secure key.
+- `UPLOAD_FOLDER`: Specifies the directory for storing uploaded files.
+- `SECRET_KEY`: Used by Flask for session management and security.
 
 ### 3. Ports:
 ```yaml
 ports:
   - "5001:5000"
 ```
- - Maps port 5000 inside the container (where the app runs) to port 5001 on your computer.
- - You can then access the app by going to http://localhost:5001 in your web browser.
+- Maps port 5000 inside the container (where the app runs) to port 5001 on your computer.
+- Access the app at `http://localhost:5001`.
 
+## Contributing
+
+Contributions are welcome! If you would like to enhance the project, please submit a pull request or open an issue.
 
 ## License
 
-This Docker image is provided under the MIT License. See the LICENSE file for more information.
-
-## Contributions
-
-If you would like to contribute to this project, feel free to submit a pull request or open an issue. We welcome bug fixes, feature improvements, and any suggestions to make this Docker image even better!
+This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
 
 Thank you for using the File Hosting application!
-
 
